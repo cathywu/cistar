@@ -168,7 +168,7 @@ class TraCIKernelNetwork(BaseKernelNetwork):
         self.edgestarts = self.network.edge_starts
 
         # if no edge_starts are specified, generate default values to be used
-        # by the "get_x" method
+        # by the "get_edge" method
         if self.edgestarts is None:
             length = 0
             self.edgestarts = []
@@ -178,17 +178,12 @@ class TraCIKernelNetwork(BaseKernelNetwork):
                 # increment the total length of the network with the length of
                 # the current edge
                 length += self._edges[edge_id]['length']
+        # sort the edgestarts by position
+        self.edgestarts.sort(key=lambda tup: tup[1])
 
-        # these optional parameters need only be used if "no-internal-links"
-        # is set to "false" while calling sumo's netconvert function
-        self.internal_edgestarts = self.network.internal_edge_starts
-        self.internal_edgestarts_dict = dict(self.internal_edgestarts)
-
-        # total_edgestarts and total_edgestarts_dict contain all of the above
-        # edges, with the former being ordered by position
-        self.total_edgestarts = self.edgestarts + self.internal_edgestarts
-        self.total_edgestarts.sort(key=lambda tup: tup[1])
-
+        # total_edgestarts and total_edgestarts_dict contain all main and
+        # internal edges, with the former being ordered by position
+        self.total_edgestarts = self._gen_internal_edgestarts()
         self.total_edgestarts_dict = dict(self.total_edgestarts)
 
         self.__length = sum(
@@ -247,9 +242,9 @@ class TraCIKernelNetwork(BaseKernelNetwork):
             except OSError:
                 pass
 
-    def get_edge(self, x):
+    def _get_edge(self, x):
         """See parent class."""
-        for (edge, start_pos) in reversed(self.total_edgestarts):
+        for (edge, start_pos) in reversed(self.edgestarts):
             if x >= start_pos:
                 return edge, x - start_pos
 
@@ -262,7 +257,7 @@ class TraCIKernelNetwork(BaseKernelNetwork):
 
         if edge[0] == ':':
             try:
-                return self.internal_edgestarts_dict[edge] + position
+                return self.total_edgestarts_dict[edge] + position
             except KeyError:
                 # in case several internal links are being generalized for
                 # by a single element (for backwards compatibility)
@@ -891,8 +886,11 @@ class TraCIKernelNetwork(BaseKernelNetwork):
             net_data[edge_id]['lanes'] = 0
             for i, lane in enumerate(edge):
                 net_data[edge_id]['lanes'] += 1
+                # choose the largest length across lanes as the edge length
+                net_data[edge_id]['length'] = max(
+                    net_data[edge_id].get('length', 0),
+                    float(lane.attrib['length']))
                 if i == 0:
-                    net_data[edge_id]['length'] = float(lane.attrib['length'])
                     if net_data[edge_id]['speed'] is None \
                             and 'speed' in lane.attrib:
                         net_data[edge_id]['speed'] = float(
@@ -935,3 +933,60 @@ class TraCIKernelNetwork(BaseKernelNetwork):
         connection_data = {'next': next_conn_data, 'prev': prev_conn_data}
 
         return net_data, connection_data
+
+    def _gen_internal_edgestarts(self):
+        """Create a list of internal edgestarts.
+
+        This method also increments the regular edgestarts so that they do not
+        overlap with the internal edgestarts.
+
+        Returns
+        -------
+        list of (str, float)
+            list of all edge names and starting positions,
+            ex: [(internal0, pos0), (internal1, pos1), ...]
+        """
+        edgestarts = deepcopy(self.edgestarts)
+
+        # the length that needs to be added to all next edges in the list of
+        # sorted edges
+        prev_junction_lengths = 0
+
+        internal_edgestarts = []
+        for i in range(len(edgestarts)):
+            edge, pos = edgestarts[i]
+
+            # increment the position with the junction length increment, and
+            # add it back to the edgestarts
+            pos += prev_junction_lengths
+            edgestarts[i] = (edge, pos)
+
+            # collect the names of all next junctions from the current edge
+            all_next_edges = []
+            for lane in range(self.num_lanes(edge)):
+                next_edge = self.next_edge(edge, lane)
+                for edge_i, _ in next_edge:
+                    if edge_i not in all_next_edges:
+                        all_next_edges.append(edge_i)
+
+            # In the case there are no next edges from the current edge (e.g.
+            # end of a highway), stop.
+            if len(all_next_edges) == 0:
+                continue
+
+            # get the maximum length of the edges, and add it to the junction
+            # increment length
+            max_length = max(self.edge_length(e) for e in all_next_edges)
+            prev_junction_lengths += max_length
+
+            # add the junctions with the position being immediately after the
+            # current edge
+            next_pos = pos + self.edge_length(edge)
+            for next_edge in all_next_edges:
+                internal_edgestarts.append((next_edge, next_pos))
+
+        # combine and sort the edgestarts and internal edgestarts
+        total_edgestarts = edgestarts + internal_edgestarts
+        total_edgestarts.sort(key=lambda tup: tup[1])
+
+        return total_edgestarts

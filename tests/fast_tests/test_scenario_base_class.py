@@ -22,6 +22,8 @@ from tests.setup_scripts import variable_lanes_exp_setup
 
 os.environ["TEST_FLAG"] = "True"
 
+JUNCTION_LENGTH = 0.6
+
 
 class NoRouteNetwork(RingNetwork):
     """A network with no routes.
@@ -52,12 +54,12 @@ class TestGetX(unittest.TestCase):
         # test for an edge in the lanes
         edge_1 = "bottom"
         pos_1 = 4.72
-        self.assertAlmostEqual(self.env.k.network.get_x(edge_1, pos_1), 5)
+        self.assertAlmostEqual(self.env.k.network.get_x(edge_1, pos_1), 4.72)
 
         # test for an edge in the internal links
-        edge_2 = ":bottom"
+        edge_2 = ":top_0"
         pos_2 = 0.1
-        self.assertAlmostEqual(self.env.k.network.get_x(edge_2, pos_2), 0.1)
+        self.assertAlmostEqual(self.env.k.network.get_x(edge_2, pos_2), 69.5)
 
     def test_error(self):
         edge = ''
@@ -85,12 +87,7 @@ class TestGetEdge(unittest.TestCase):
         # test for a position in the lanes
         x1 = 5
         self.assertTupleEqual(
-            self.env.k.network.get_edge(x1), ("bottom", 4.72))
-
-        # test for a position in the internal links
-        x2 = 0.1
-        self.assertTupleEqual(
-            self.env.k.network.get_edge(x2), (":bottom", 0.1))
+            self.env.k.network._get_edge(x1), ("bottom", 5))
 
 
 class TestEvenStartPos(unittest.TestCase):
@@ -157,6 +154,11 @@ class TestEvenStartPos(unittest.TestCase):
         veh_pos = np.array([self.env.k.vehicle.get_x_by_id(veh_id)
                             for veh_id in ids])
 
+        # to account for the additions to the positions by the junctions
+        veh_pos[veh_pos > (230/4)] -= JUNCTION_LENGTH
+        veh_pos[veh_pos > (230/2)] -= JUNCTION_LENGTH
+        veh_pos[veh_pos > (230*3/4)] -= JUNCTION_LENGTH
+
         # difference in position between the nth vehicle and the vehicle ahead
         # of it
         nth_headway = np.mod(
@@ -190,6 +192,11 @@ class TestEvenStartPos(unittest.TestCase):
         veh_pos = np.array([self.env.k.vehicle.get_x_by_id(veh_id)
                             for veh_id in ids])
 
+        # to account for the additions to the positions by the junctions
+        veh_pos[veh_pos > (230/4)] -= JUNCTION_LENGTH
+        veh_pos[veh_pos > (230/2)] -= JUNCTION_LENGTH
+        veh_pos[veh_pos > (230*3/4)] -= JUNCTION_LENGTH
+
         # difference in position between the nth vehicle and the vehicle ahead
         # of it
         nth_headway = np.mod(
@@ -220,6 +227,11 @@ class TestEvenStartPos(unittest.TestCase):
         ids = self.env.k.vehicle.get_ids()
         veh_pos = np.array([self.env.k.vehicle.get_x_by_id(veh_id)
                             for veh_id in ids])
+
+        # to account for the additions to the positions by the junctions
+        veh_pos[veh_pos > (230/4)] -= JUNCTION_LENGTH
+        veh_pos[veh_pos > (230/2)] -= JUNCTION_LENGTH
+        veh_pos[veh_pos > (230*3/4)] -= JUNCTION_LENGTH
 
         # difference in position between the nth vehicle and the vehicle ahead
         # of it
@@ -256,6 +268,11 @@ class TestEvenStartPos(unittest.TestCase):
         veh_pos = np.array([self.env.k.network.get_x(pos[0], pos[1])
                             for pos in startpos])
 
+        # to account for the additions to the positions by the junctions
+        veh_pos[veh_pos > (230/4)] -= JUNCTION_LENGTH
+        veh_pos[veh_pos > (230/2)] -= JUNCTION_LENGTH
+        veh_pos[veh_pos > (230*3/4)] -= JUNCTION_LENGTH
+
         # difference in position between the nth vehicle and the vehicle ahead
         # of it
         nth_headway = np.mod(
@@ -288,10 +305,15 @@ class TestEvenStartPos(unittest.TestCase):
         ids = self.env.k.vehicle.get_ids()
         veh_pos = []
         for i in range(lanes):
-            veh_pos.append([
+            veh_pos.append(np.array([
                 self.env.k.vehicle.get_x_by_id(veh_id) for veh_id in ids
                 if self.env.k.vehicle.get_lane(veh_id) == i
-            ])
+            ]))
+
+            # to account for the additions to the positions by the junctions
+            veh_pos[-1][veh_pos[-1] > (230 / 4)] -= JUNCTION_LENGTH
+            veh_pos[-1][veh_pos[-1] > (230 / 2)] -= JUNCTION_LENGTH
+            veh_pos[-1][veh_pos[-1] > (230 * 3 / 4)] -= JUNCTION_LENGTH
 
         # check that the vehicles are uniformly distributed in the number of
         # requested lanes
@@ -428,73 +450,6 @@ class TestEvenStartPos(unittest.TestCase):
             initial_config=InitialConfig(), num_vehicles=10)
         self.assertEqual(len(pos), 10)
         self.assertEqual(len(lanes), 10)
-
-
-class TestEvenStartPosInternalLinks(unittest.TestCase):
-    """
-    Tests the function gen_even_start_pos when internal links are being used.
-    Ensures that all vehicles are evenly spaced except when a vehicle is
-    supposed to be placed at an internal link, in which case the vehicle is
-    placed right outside the internal link.
-    """
-
-    def setUp(self):
-        # place 15 vehicles in the network (we need at least more than 1)
-        vehicles = VehicleParams()
-        vehicles.add(
-            veh_id="test",
-            acceleration_controller=(IDMController, {}),
-            routing_controller=(ContinuousRouter, {}),
-            car_following_params=SumoCarFollowingParams(
-                min_gap=0
-            ),
-            num_vehicles=15)
-
-        initial_config = InitialConfig(x0=150)
-
-        # create the environment and network classes for a ring road
-        self.env, _, _ = figure_eight_exp_setup(
-            initial_config=initial_config, vehicles=vehicles)
-
-    def tearDown(self):
-        # terminate the traci instance
-        self.env.terminate()
-
-        # free data used by the class
-        self.env = None
-
-    def test_even_start_pos_internal(self):
-        # get the positions of all vehicles
-        ids = self.env.k.vehicle.get_ids()
-        veh_pos = np.array([self.env.k.vehicle.get_x_by_id(veh_id)
-                            for veh_id in ids])
-
-        # difference in position between the nth vehicle and the vehicle ahead
-        # of it
-        nth_headway = np.mod(
-            np.append(veh_pos[1:], veh_pos[0]) - veh_pos,
-            self.env.k.network.non_internal_length())
-
-        try:
-            # if all element are equal, there should only be one unique value
-            self.assertEqual(np.unique(np.around(nth_headway, 2)).size, 1)
-        except AssertionError:
-            # check that, if not all vehicles are equally spaced, that the
-            # vehicle that is not equally spaced is right after an internal
-            # link, and at position 0
-            for i in range(len(nth_headway) - 1):
-                if nth_headway[i] - np.mean(nth_headway) > 0.001:
-                    # if not, check that the last or first vehicle is right
-                    # after an internal link, on position 0
-                    pos = [
-                        self.env.k.vehicle.get_x_by_id(veh_id)
-                        for veh_id in [ids[i + 1], ids[i]]
-                    ]
-                    rel_pos = [
-                        self.env.k.network.get_edge(pos_i)[1] for pos_i in pos
-                    ]
-
-                    self.assertTrue(np.any(np.array(rel_pos) == 0))
 
 
 class TestRandomStartPos(unittest.TestCase):

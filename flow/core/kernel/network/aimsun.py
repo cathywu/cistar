@@ -212,7 +212,7 @@ class AimsunKernelNetwork(BaseKernelNetwork):
         self.edgestarts = self.network.edge_starts
 
         # if no edge_starts are specified, generate default values to be used
-        # by the "get_x" method
+        # by the "get_edge" method
         if self.edgestarts is None:
             length = 0
             self.edgestarts = []
@@ -222,6 +222,7 @@ class AimsunKernelNetwork(BaseKernelNetwork):
                 # increment the total length of the network with the length of
                 # the current edge
                 length += self._edges[edge_id]['length']
+        self.edgestarts.sort(key=lambda tup: tup[1])
 
         # these optional parameters need only be used if "no-internal-links"
         # is set to "false" while calling sumo's netconvert function
@@ -317,9 +318,9 @@ class AimsunKernelNetwork(BaseKernelNetwork):
         """See parent class."""
         return self._junction_list
 
-    def get_edge(self, x):  # TODO: maybe remove
+    def _get_edge(self, x):  # TODO: maybe remove
         """See parent class."""
-        for (edge, start_pos) in reversed(self.total_edgestarts):
+        for (edge, start_pos) in reversed(self.edgestarts):
             if x >= start_pos:
                 return edge, x - start_pos
 

@@ -692,7 +692,7 @@ class TestFollowerStopper(unittest.TestCase):
             for veh_id in ids
         ]
 
-        expected = [-10, 0, 23.1, 34.7, 46.3]
+        expected = [-10, 0, 23., 34.5, 46.]
 
         np.testing.assert_array_almost_equal(requested, expected)
 

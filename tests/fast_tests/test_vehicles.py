@@ -248,7 +248,7 @@ class TestMultiLaneData(unittest.TestCase):
 
         # check the lane tailways is outputting the right values
         actual_lane_tail = env.k.vehicle.get_lane_tailways("test_0")
-        expected_lane_tail = [28.577143] * 3
+        expected_lane_tail = [28.277143] * 3
         np.testing.assert_array_almost_equal(actual_lane_tail,
                                              expected_lane_tail)
 

@@ -70,13 +70,6 @@ class FigureEightNetwork(Network):
         ring_radius = net_params.additional_params["radius_ring"]
         self.ring_edgelen = ring_radius * np.pi / 2.
         self.intersection_len = 2 * ring_radius
-        self.junction_len = 2.9 + 3.3 * net_params.additional_params["lanes"]
-        self.inner_space_len = 0.28
-
-        # # instantiate "length" in net params
-        # net_params.additional_params["length"] = \
-        #     6 * self.ring_edgelen + 2 * self.intersection_len + \
-        #     2 * self.junction_len + 10 * self.inner_space_len
 
         super().__init__(name, vehicles, net_params, initial_config,
                          traffic_lights)
@@ -225,39 +218,11 @@ class FigureEightNetwork(Network):
     def specify_edge_starts(self):
         """See base class."""
         edgestarts = [
-            ("bottom", self.inner_space_len),
-            ("top", self.intersection_len / 2 + self.junction_len +
-             self.inner_space_len),
-            ("upper_ring", self.intersection_len + self.junction_len +
-             2 * self.inner_space_len),
-            ("right", self.intersection_len + 3 * self.ring_edgelen
-             + self.junction_len + 3 * self.inner_space_len),
-            ("left", 3 / 2 * self.intersection_len + 3 * self.ring_edgelen
-             + 2 * self.junction_len + 3 * self.inner_space_len),
-            ("lower_ring", 2 * self.intersection_len + 3 * self.ring_edgelen
-             + 2 * self.junction_len + 4 * self.inner_space_len)]
+            ("bottom", 0),
+            ("top", self.intersection_len / 2),
+            ("upper_ring", self.intersection_len),
+            ("right", self.intersection_len + 3 * self.ring_edgelen),
+            ("left", 3 / 2 * self.intersection_len + 3 * self.ring_edgelen),
+            ("lower_ring", 2 * self.intersection_len + 3 * self.ring_edgelen)]
 
         return edgestarts
-
-    def specify_internal_edge_starts(self):
-        """See base class."""
-        internal_edgestarts = [
-            (":bottom", 0),
-            (":center_{}".format(self.net_params.additional_params['lanes']),
-             self.intersection_len / 2 + self.inner_space_len),
-            (":top", self.intersection_len + self.junction_len +
-             self.inner_space_len),
-            (":right", self.intersection_len + 3 * self.ring_edgelen
-             + self.junction_len + 2 * self.inner_space_len),
-            (":center_0", 3 / 2 * self.intersection_len + 3 * self.ring_edgelen
-             + self.junction_len + 3 * self.inner_space_len),
-            (":left", 2 * self.intersection_len + 3 * self.ring_edgelen
-             + 2 * self.junction_len + 3 * self.inner_space_len),
-            # for aimsun
-            ('bottom_to_top',
-             self.intersection_len / 2 + self.inner_space_len),
-            ('right_to_left',
-             + self.junction_len + 3 * self.inner_space_len),
-        ]
-
-        return internal_edgestarts

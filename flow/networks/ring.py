@@ -59,7 +59,7 @@ class RingNetwork(Network):
                  net_params,
                  initial_config=InitialConfig(),
                  traffic_lights=TrafficLightParams()):
-        """Initialize a ring scenario."""
+        """Initialize a ring network."""
         for p in ADDITIONAL_NET_PARAMS.keys():
             if p not in net_params.additional_params:
                 raise KeyError('Network parameter "{}" not supplied'.format(p))
@@ -194,23 +194,10 @@ class RingNetwork(Network):
     def specify_edge_starts(self):
         """See parent class."""
         ring_length = self.net_params.additional_params["length"]
-        junction_length = 0.1  # length of inter-edge junctions
 
         edgestarts = [("bottom", 0),
-                      ("right", 0.25 * ring_length + junction_length),
-                      ("top", 0.5 * ring_length + 2 * junction_length),
-                      ("left", 0.75 * ring_length + 3 * junction_length)]
-
-        return edgestarts
-
-    def specify_internal_edge_starts(self):
-        """See parent class."""
-        ring_length = self.net_params.additional_params["length"]
-        junction_length = 0.1  # length of inter-edge junctions
-
-        edgestarts = [(":right_0", 0.25 * ring_length),
-                      (":top_0", 0.5 * ring_length + junction_length),
-                      (":left_0", 0.75 * ring_length + 2 * junction_length),
-                      (":bottom_0", ring_length + 3 * junction_length)]
+                      ("right", 0.25 * ring_length),
+                      ("top", 0.5 * ring_length),
+                      ("left", 0.75 * ring_length)]
 
         return edgestarts

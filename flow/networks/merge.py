@@ -195,24 +195,11 @@ class MergeNetwork(Network):
         premerge = self.net_params.additional_params["pre_merge_length"]
         postmerge = self.net_params.additional_params["post_merge_length"]
 
-        edgestarts = [("inflow_highway", 0), ("left", INFLOW_EDGE_LEN + 0.1),
-                      ("center", INFLOW_EDGE_LEN + premerge + 22.6),
-                      ("inflow_merge",
-                       INFLOW_EDGE_LEN + premerge + postmerge + 22.6),
-                      ("bottom",
-                       2 * INFLOW_EDGE_LEN + premerge + postmerge + 22.7)]
+        edgestarts = [
+            ("inflow_highway", 0),
+            ("left", INFLOW_EDGE_LEN),
+            ("center", INFLOW_EDGE_LEN + premerge),
+            ("inflow_merge", INFLOW_EDGE_LEN + premerge + postmerge),
+            ("bottom", 2 * INFLOW_EDGE_LEN + premerge + postmerge)]
 
         return edgestarts
-
-    def specify_internal_edge_starts(self):
-        """See parent class."""
-        premerge = self.net_params.additional_params["pre_merge_length"]
-        postmerge = self.net_params.additional_params["post_merge_length"]
-
-        internal_edgestarts = [
-            (":left", INFLOW_EDGE_LEN), (":center",
-                                         INFLOW_EDGE_LEN + premerge + 0.1),
-            (":bottom", 2 * INFLOW_EDGE_LEN + premerge + postmerge + 22.6)
-        ]
-
-        return internal_edgestarts

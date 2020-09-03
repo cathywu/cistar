@@ -115,7 +115,7 @@ class MultiRingNetwork(Network):
         # generate uniform starting positions
         while car_count < num_vehicles:
             # collect the position and lane number of each new vehicle
-            pos = cls.get_edge(x)
+            pos = cls._get_edge(x)
 
             # place vehicles side-by-side in all available lanes on this edge
             for lane in range(min(cls.num_lanes(pos[0]), lanes_distr)):

@@ -154,8 +154,10 @@ class BaseKernelNetwork(object):
         """Return the names of all junctions in the network."""
         raise NotImplementedError
 
-    def get_edge(self, x):  # TODO: maybe remove
+    def _get_edge(self, x):  # TODO: maybe remove
         """Compute an edge and relative position from an absolute position.
+
+        The edges do not include internal edges.
 
         Parameters
         ----------
@@ -201,6 +203,10 @@ class BaseKernelNetwork(object):
         These edges may also be internal links (junctions). Returns an empty
         list if there are no edge/lane pairs behind.
         """
+        raise NotImplementedError
+
+    def non_internal_length(self):
+        """Return the length of the network, no including internal edges."""
         raise NotImplementedError
 
     ###########################################################################
@@ -322,30 +328,12 @@ class BaseKernelNetwork(object):
         # generate uniform starting positions
         while car_count < num_vehicles:
             # collect the position and lane number of each new vehicle
-            pos = self.get_edge(x)
-
-            # ensures that vehicles are not placed in an internal junction
-            while pos[0] in dict(self.internal_edgestarts).keys():
-                # find the location of the internal edge in total_edgestarts,
-                # which has the edges ordered by position
-                edges = [tup[0] for tup in self.total_edgestarts]
-                indx_edge = next(
-                    i for i, edge in enumerate(edges) if edge == pos[0])
-
-                # take the next edge in the list, and place the car at the
-                # beginning of this edge
-                if indx_edge == len(edges) - 1:
-                    next_edge_pos = self.total_edgestarts[0]
-                else:
-                    next_edge_pos = self.total_edgestarts[indx_edge + 1]
-
-                x = next_edge_pos[1]
-                pos = (next_edge_pos[0], 0)
+            pos = self._get_edge(x)
 
             # ensures that you are in an acceptable edge
             while pos[0] not in available_edges:
                 x = (x + self.edge_length(pos[0])) % self.non_internal_length()
-                pos = self.get_edge(x)
+                pos = self._get_edge(x)
 
             # ensure that in variable lane settings vehicles always start a
             # vehicle's length away from the start of the edge. This, however,
@@ -358,7 +346,7 @@ class BaseKernelNetwork(object):
                              (num_vehicles - car_count)
 
             # place vehicles side-by-side in all available lanes on this edge
-            for lane in range(min([self.num_lanes(pos[0]), lanes_distr])):
+            for lane in range(min(self.num_lanes(pos[0]), lanes_distr)):
                 car_count += 1
                 startpositions.append(pos)
                 startlanes.append(lane)
@@ -366,7 +354,8 @@ class BaseKernelNetwork(object):
                 if car_count == num_vehicles:
                     break
 
-            x = (x + increment + VEHICLE_LENGTH + min_gap) % self.non_internal_length()
+            x = (x + increment + VEHICLE_LENGTH + min_gap) \
+                % self.non_internal_length()
 
         # add a perturbation to each vehicle, while not letting the vehicle
         # leave its current edge
