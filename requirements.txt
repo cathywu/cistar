@@ -25,7 +25,7 @@ redis~=2.10.6
 pandas==0.24.2
 plotly==2.4.0
 tabulate
-tensorflow==1.15.2
+tensorflow==2.5.0
 awscli==1.16.309
 torch==1.4.0
 pytz
